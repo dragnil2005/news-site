@@ -140,8 +140,20 @@ const featuredArticles = computed(() => articlesStore.featuredArticles)
 
 // Методы
 const getImageUrl = (path) => {
-  if (path.startsWith('http')) return path
-  return `${import.meta.env.VITE_STRAPI_URL}${path}`
+  if (!path) return '/placeholder.jpg' // Добавляем проверку на null/undefined
+  
+  // Для Strapi v4 изображения могут быть в разных форматах
+  if (path.startsWith('/uploads')) {
+    return `${import.meta.env.VITE_STRAPI_URL || 'http://localhost:1337'}${path}`
+  }
+  
+  // Если это полный URL или относительный путь
+  if (path.startsWith('http') || path.startsWith('data:')) {
+    return path
+  }
+  
+  // Возвращаем как есть или заглушку
+  return path || '/placeholder.jpg'
 }
 
 const formatDate = (dateString) => {

@@ -70,7 +70,17 @@ export const articlesAPI = {
   deleteArticle: (id) => strapi.delete(`/api/articles/${id}`),
   
   // Кастомные эндпоинты (из ТЗ)
-  getFeatured: () => strapi.get('/api/articles?filters[isFeatured][$eq]=true&populate=*&sort=publishedAt:desc&pagination[pageSize]=5'),
+getFeatured: () => strapi.get('/api/articles', {
+  params: {
+    'filters[isFeatured][$eq]': 'true',
+    'populate[0]': 'coverImage',
+    'populate[1]': 'category',
+    'populate[2]': 'author',
+    'populate[3]': 'tags',
+    'sort': 'publishedAt:desc',
+    'pagination[pageSize]': 5
+  }
+}),
   
   publishArticle: (id) => strapi.post(`/api/articles/${id}/publish`),
   
