@@ -16,64 +16,64 @@
       <nav class="breadcrumbs">
         <router-link to="/">Главная</router-link> / 
         <router-link 
-          v-if="article.attributes.category?.data"
-          :to="`/?category=${article.attributes.category.data.attributes.slug}`"
+          v-if="article.category?.data"
+          :to="`/?category=${article.category.data.attributes.slug}`"
         >
-          {{ article.attributes.category.data.attributes.name }}
+          {{ article.category.data.attributes.name }}
         </router-link>
         <span v-else>Без категории</span> / 
-        <span>{{ article.attributes.title }}</span>
+        <span>{{ article.title }}</span>
       </nav>
 
       <!-- Обложка -->
-      <div v-if="article.attributes.coverImage?.data" class="article-cover">
+      <div v-if="article.coverImage?.data" class="article-cover">
         <img 
-          :src="getImageUrl(article.attributes.coverImage.data.attributes.url)" 
-          :alt="article.attributes.title"
+          :src="getImageUrl(article.coverImage.data.attributes.url)" 
+          :alt="article.title"
         />
       </div>
 
       <!-- Заголовок и метаданные -->
       <header class="article-header">
         <div class="article-meta">
-          <span v-if="article.attributes.category?.data" class="category">
-            {{ article.attributes.category.data.attributes.name }}
+          <span v-if="article.category?.data" class="category">
+            {{ article.category.data.attributes.name }}
           </span>
-          <span class="date">{{ formatDate(article.attributes.publishedAt) }}</span>
-          <span v-if="article.attributes.views" class="views">👁️ {{ article.attributes.views }} просмотров</span>
-          <span v-if="article.attributes.readingTime" class="reading-time">⏱️ {{ article.attributes.readingTime }} мин чтения</span>
-          <span v-if="article.attributes.isFeatured" class="featured-badge">★ Избранная статья</span>
+          <span class="date">{{ formatDate(article.publishedAt) }}</span>
+          <span v-if="article.views" class="views">👁️ {{ article.views }} просмотров</span>
+          <span v-if="article.readingTime" class="reading-time">⏱️ {{ article.readingTime }} мин чтения</span>
+          <span v-if="article.isFeatured" class="featured-badge">★ Избранная статья</span>
         </div>
 
-        <h1 class="article-title">{{ article.attributes.title }}</h1>
+        <h1 class="article-title">{{ article.title }}</h1>
 
-        <div v-if="article.attributes.author?.data" class="article-author">
+        <div v-if="article.author?.data" class="article-author">
           <div class="author-info">
             <div class="author-avatar">
-              {{ article.attributes.author.data.attributes.username.charAt(0).toUpperCase() }}
+              {{ article.author.data.attributes.username.charAt(0).toUpperCase() }}
             </div>
             <div class="author-details">
-              <span class="author-name">{{ article.attributes.author.data.attributes.username }}</span>
-              <span class="author-email">{{ article.attributes.author.data.attributes.email }}</span>
+              <span class="author-name">{{ article.author.data.attributes.username }}</span>
+              <span class="author-email">{{ article.author.data.attributes.email }}</span>
             </div>
           </div>
         </div>
       </header>
 
       <!-- Краткое описание -->
-      <div v-if="article.attributes.excerpt" class="article-excerpt">
-        <p>{{ article.attributes.excerpt }}</p>
+      <div v-if="article.excerpt" class="article-excerpt">
+        <p>{{ article.excerpt }}</p>
       </div>
 
       <!-- Содержимое -->
-      <div class="article-content" v-html="formatContent(article.attributes.content)"></div>
+      <div class="article-content" v-html="formatContent(article.content)"></div>
 
       <!-- Теги -->
-      <div v-if="article.attributes.tags && article.attributes.tags.length" class="article-tags">
+      <div v-if="article.tags && article.tags.length" class="article-tags">
         <h3>Теги:</h3>
         <div class="tags-list">
           <span 
-            v-for="tag in article.attributes.tags" 
+            v-for="tag in article.tags" 
             :key="tag"
             class="tag"
             @click="searchByTag(tag)"
@@ -84,12 +84,12 @@
       </div>
 
       <!-- SEO информация -->
-      <div v-if="article.attributes.seo" class="article-seo">
+      <div v-if="article.seo" class="article-seo">
         <div class="seo-title">
-          <strong>SEO Title:</strong> {{ article.attributes.seo.title }}
+          <strong>SEO Title:</strong> {{ article.seo.title }}
         </div>
         <div class="seo-description">
-          <strong>SEO Description:</strong> {{ article.attributes.seo.description }}
+          <strong>SEO Description:</strong> {{ article.seo.description }}
         </div>
       </div>
 
@@ -98,14 +98,14 @@
         <button @click="handleEdit" class="btn btn-primary">Редактировать</button>
         <button @click="handleDelete" class="btn btn-danger">Удалить</button>
         <button 
-          v-if="!article.attributes.publishedAt"
+          v-if="!article.publishedAt"
           @click="handlePublish"
           class="btn btn-success"
         >
           Опубликовать сейчас
         </button>
         <button 
-          v-if="article.attributes.publishedAt"
+          v-if="article.publishedAt"
           @click="handleUnpublish"
           class="btn btn-warning"
         >
@@ -119,12 +119,12 @@
         <div class="similar-grid">
           <div 
             v-for="similar in similarArticles" 
-            :key="similar.id"
+            :key="similar.documentId"
             class="similar-card"
           >
-            <router-link :to="`/article/${similar.id}`">
-              <h4>{{ similar.attributes.title }}</h4>
-              <p>{{ similar.attributes.excerpt }}</p>
+            <router-link :to="`/article/${similar.documentId}`">
+              <h4>{{ similar.title }}</h4>
+              <p>{{ similar.excerpt }}</p>
             </router-link>
           </div>
         </div>
@@ -132,11 +132,11 @@
 
       <!-- Навигация -->
       <div class="article-navigation">
-        <router-link v-if="previousArticle" :to="`/article/${previousArticle.id}`" class="nav-link prev">
-          ← {{ previousArticle.attributes.title }}
+        <router-link v-if="previousArticle" :to="`/article/${previousArticle.documentId}`" class="nav-link prev">
+          ← {{ previousArticle.title }}
         </router-link>
-        <router-link v-if="nextArticle" :to="`/article/${nextArticle.id}`" class="nav-link next">
-          {{ nextArticle.attributes.title }} →
+        <router-link v-if="nextArticle" :to="`/article/${nextArticle.documentId}`" class="nav-link next">
+          {{ nextArticle.title }} →
         </router-link>
       </div>
     </div>
@@ -177,6 +177,16 @@ const formatDate = (dateString) => {
 
 const formatContent = (content) => {
   if (!content) return ''
+  // Если content это массив объектов (Rich Text из Strapi)
+  if (Array.isArray(content)) {
+    return content.map(item => {
+      if (item.type === 'paragraph' && item.children) {
+        return `<p>${item.children.map(child => child.text).join('')}</p>`
+      }
+      return ''
+    }).join('')
+  }
+  // Если content это просто строка
   return content.replace(/\n/g, '<br>')
 }
 
@@ -185,13 +195,13 @@ const searchByTag = (tag) => {
 }
 
 const handleEdit = () => {
-  router.push(`/editor/${article.value.id}`)
+  router.push(`/editor/${article.value.documentId}`)
 }
 
 const handleDelete = async () => {
   if (confirm('Вы уверены, что хотите удалить эту статью?')) {
     try {
-      await articlesStore.deleteArticle(article.value.id)
+      await articlesStore.deleteArticle(article.value.documentId)
       router.push('/')
     } catch (error) {
       alert('Ошибка при удалении статьи')
@@ -201,8 +211,8 @@ const handleDelete = async () => {
 
 const handlePublish = async () => {
   try {
-    await articlesStore.publishArticle(article.value.id)
-    article.value.attributes.publishedAt = new Date().toISOString()
+    await articlesStore.publishArticle(article.value.documentId)
+    article.value.publishedAt = new Date().toISOString()
     alert('Статья опубликована успешно!')
   } catch (error) {
     alert('Ошибка при публикации статьи')
@@ -212,10 +222,10 @@ const handlePublish = async () => {
 const handleUnpublish = async () => {
   if (confirm('Снять статью с публикации?')) {
     try {
-      await articlesStore.updateArticle(article.value.id, {
+      await articlesStore.updateArticle(article.value.documentId, {
         publishedAt: null
       })
-      article.value.attributes.publishedAt = null
+      article.value.publishedAt = null
       alert('Статья снята с публикации')
     } catch (error) {
       alert('Ошибка')
@@ -231,17 +241,14 @@ const loadArticle = async () => {
     const articleId = route.params.id
     article.value = await articlesStore.fetchArticle(articleId)
     
-    // Инкремент просмотров
-    await articlesStore.incrementViews(articleId)
-    
     // Загрузка похожих статей
-    if (article.value.attributes.category?.data) {
+    if (article.value.category?.data) {
       const response = await articlesStore.fetchArticles({
-        'filters[category][slug][$eq]': article.value.attributes.category.data.attributes.slug,
-        'filters[id][$ne]': articleId,
+        'filters[category][slug][$eq]': article.value.category.data.attributes.slug,
+        'filters[documentId][$ne]': articleId,
         'pagination[pageSize]': 3
       })
-      similarArticles.value = response.data
+      similarArticles.value = response.data || []
     }
     
     // Загрузка предыдущей и следующей статьи
@@ -250,7 +257,7 @@ const loadArticle = async () => {
       'pagination[pageSize]': 100
     })
     
-    const currentIndex = allArticles.data.findIndex(a => a.id === articleId)
+    const currentIndex = allArticles.data.findIndex(a => a.documentId === articleId)
     if (currentIndex > 0) {
       previousArticle.value = allArticles.data[currentIndex - 1]
     }
@@ -269,8 +276,8 @@ const loadArticle = async () => {
 const updateMetaTags = () => {
   if (!article.value) return
   
-  const title = article.value.attributes.seo?.title || article.value.attributes.title
-  const description = article.value.attributes.seo?.description || article.value.attributes.excerpt
+  const title = article.value.seo?.title || article.value.title
+  const description = article.value.seo?.description || article.value.excerpt
   
   document.title = `${title} | Новостной портал`
   
@@ -284,8 +291,8 @@ const updateMetaTags = () => {
   if (metaDescription) metaDescription.content = description
   if (ogTitle) ogTitle.content = title
   if (ogDescription) ogDescription.content = description
-  if (ogImage && article.value.attributes.coverImage?.data) {
-    ogImage.content = getImageUrl(article.value.attributes.coverImage.data.attributes.url)
+  if (ogImage && article.value.coverImage?.data) {
+    ogImage.content = getImageUrl(article.value.coverImage.data.attributes.url)
   }
 }
 

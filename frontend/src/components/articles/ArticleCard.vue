@@ -1,51 +1,51 @@
 <template>
-  <div class="article-card" :class="{ 'featured': article.attributes.isFeatured }">
+  <div class="article-card" :class="{ 'featured': article.isFeatured }">
     <!-- Обложка -->
-    <div v-if="article.attributes.coverImage?.data" class="article-cover">
+    <div v-if="article.coverImage?.data" class="article-cover">
       <img 
-        :src="getImageUrl(article.attributes.coverImage.data.attributes.url)" 
-        :alt="article.attributes.title"
-        @click="$router.push(`/article/${article.id}`)"
+        :src="getImageUrl(article.coverImage.data.attributes.url)" 
+        :alt="article.title"
+        @click="$router.push(`/article/${article.documentId}`)"
       />
-      <div v-if="article.attributes.isFeatured" class="featured-badge">⭐ Избранное</div>
+      <div v-if="article.isFeatured" class="featured-badge">⭐ Избранное</div>
     </div>
 
     <!-- Контент -->
     <div class="article-content">
       <!-- Категория -->
-      <div class="article-category" v-if="article.attributes.category?.data">
-        <router-link :to="`/?category=${article.attributes.category.data.attributes.slug}`">
-          {{ article.attributes.category.data.attributes.name }}
+      <div class="article-category" v-if="article.category?.data">
+        <router-link :to="`/?category=${article.category.data.attributes.slug}`">
+          {{ article.category.data.attributes.name }}
         </router-link>
       </div>
 
       <!-- Заголовок -->
-      <h3 class="article-title" @click="$router.push(`/article/${article.id}`)">
-        {{ article.attributes.title }}
+      <h3 class="article-title" @click="$router.push(`/article/${article.documentId}`)">
+        {{ article.title }}
       </h3>
 
       <!-- Краткое описание -->
-      <p class="article-excerpt">{{ article.attributes.excerpt }}</p>
+      <p class="article-excerpt">{{ article.excerpt }}</p>
 
       <!-- Метаданные -->
       <div class="article-meta">
         <span class="article-date">
-          {{ formatDate(article.attributes.publishedAt) }}
+          {{ formatDate(article.publishedAt) }}
         </span>
         
-        <span v-if="article.attributes.readingTime" class="reading-time">
-          ⏱️ {{ article.attributes.readingTime }} мин
+        <span v-if="article.readingTime" class="reading-time">
+          ⏱️ {{ article.readingTime }} мин
         </span>
         
-        <span v-if="article.attributes.views" class="article-views">
-          👁️ {{ article.attributes.views }}
+        <span v-if="article.views" class="article-views">
+          👁️ {{ article.views }}
         </span>
       </div>
 
       <!-- Теги -->
-      <div v-if="article.attributes.tags?.length" class="article-tags">
+      <div v-if="article.tags?.length" class="article-tags">
         <span 
-          v-for="tag in article.attributes.tags.slice(0, 3)" 
+          v-for="tag in article.tags.slice(0, 3)" 
           :key="tag"
           class="tag"
           @click="searchByTag(tag)"
@@ -64,7 +64,7 @@
           🗑️ Удалить
         </button>
         <router-link 
-          :to="`/editor/${article.id}`"
+          :to="`/editor/${article.documentId}`"
           class="btn-edit"
         >
           ✏️ Редактировать
@@ -112,7 +112,7 @@ const handleDelete = async () => {
   if (!confirm('Вы уверены, что хотите удалить эту статью?')) return
   
   try {
-    await articlesStore.deleteArticle(props.article.id)
+    await articlesStore.deleteArticle(props.article.documentId)
     // Уведомление об успешном удалении
     if (window.showToast) {
       window.showToast('success', 'Статья удалена', 'Статья была успешно удалена')

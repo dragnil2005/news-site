@@ -42,25 +42,40 @@ export const useArticlesStore = defineStore('articles', {
       this.isLoading = true
       this.error = null
       try {
-        const response = await articlesAPI.getArticles({
-          populate: 'category,author,coverImage',
-          sort: this.filters.sort,
+        // Строим параметры запроса
+        const queryParams = {
           'pagination[page]': this.pagination.page,
           'pagination[pageSize]': this.pagination.pageSize,
+          sort: this.filters.sort,
+          populate: '*',
           ...this.buildFilters(),
           ...params,
-        })
+        }
+
+        const response = await articlesAPI.getArticles(queryParams)
         
-        this.articles = response.data.data
-        this.pagination = response.data.meta.pagination
-        
-        // Проверяем наличие кастомного эндпоинта /featured
-        if (!this.featuredArticles || !this.featuredArticles.length) {
-          this.fetchFeaturedArticles()
+        // Обрабатываем ответ Strapi v4
+        if (response.data && response.data.data) {
+          this.articles = response.data.data
+          this.pagination = response.data.meta?.pagination || {
+            page: 1,
+            pageSize: this.pagination.pageSize,
+            pageCount: 1,
+            total: response.data.data.length
+          }
+        } else {
+          this.articles = response.data || []
+          this.pagination = {
+            page: 1,
+            pageSize: this.pagination.pageSize,
+            pageCount: 1,
+            total: (response.data || []).length
+          }
         }
         
         return response.data
       } catch (error) {
+        console.error('Fetch articles error:', error)
         this.error = this.getErrorMessage(error)
         throw error
       } finally {
@@ -69,38 +84,31 @@ export const useArticlesStore = defineStore('articles', {
     },
 
     async fetchFeaturedArticles() {
-  try {
-    // Пробуем получить избранные статьи через кастомный эндпоинт
-    const response = await articlesAPI.getFeatured()
-    
-    // Добавляем проверку на 404 и другие ошибки
-    if (!response.data || response.status === 404) {
-      throw new Error('Featured endpoint not found')
-    }
-    
-    this.featuredArticles = response.data.data || []
-      } catch (error) {
-        // Если кастомный эндпоинт не реализован, фильтруем локально
-        console.warn('Featured endpoint not available, filtering locally:', error.message)
+      try {
+        const response = await articlesAPI.getFeatured()
         
+        if (response.data && response.data.data) {
+          this.featuredArticles = response.data.data
+        } else {
+          this.featuredArticles = response.data || []
+        }
+      } catch (error) {
+        console.warn('Featured articles error, using fallback:', error.message)
+        
+        // Fallback: фильтруем локально из всех статей
         try {
-          // ИСПРАВЬ ЭТОТ ЗАПРОС:
-          // Убираем populate=* из запроса, он может вызывать ошибки
-          const allArticles = await articlesAPI.getArticles({
-            'pagination[pageSize]': 10, // Уменьшаем количество
-            'filters[isFeatured][$eq]': true // Сразу фильтруем на сервере
+          const allResponse = await articlesAPI.getArticles({
+            'pagination[pageSize]': 20,
+            sort: 'publishedAt:desc'
           })
           
-          console.log('Filtered featured articles:', allArticles)
-          
-          // Безопасная обработка
-          this.featuredArticles = (allArticles.data?.data || [])
-            .filter(article => article?.attributes?.isFeatured === true)
-            .slice(0, 5)
-            
-        } catch (innerError) {
-          console.error('Error fetching featured articles:', innerError)
-          this.featuredArticles = [] // Устанавливаем пустой массив при любой ошибке
+          const allArticles = allResponse.data?.data || allResponse.data || []
+          this.featuredArticles = allArticles.filter(article => 
+            article.attributes?.isFeatured === true
+          ).slice(0, 5)
+        } catch (fallbackError) {
+          console.error('Fallback also failed:', fallbackError)
+          this.featuredArticles = []
         }
       }
     },
@@ -108,28 +116,42 @@ export const useArticlesStore = defineStore('articles', {
     async fetchCategories() {
       try {
         const response = await categoriesAPI.getCategories()
-        this.categories = response.data.data
+        
+        if (response.data && response.data.data) {
+          this.categories = response.data.data
+        } else {
+          this.categories = response.data || []
+        }
       } catch (error) {
         console.error('Failed to fetch categories:', error)
         this.error = 'Ошибка загрузки категорий'
+        this.categories = []
       }
     },
 
-    async fetchArticle(id) {
+    async fetchArticle(documentId) {
       this.isLoading = true
+      this.error = null
       try {
-        const response = await articlesAPI.getArticle(id)
-        this.currentArticle = response.data.data
+        const response = await articlesAPI.getArticle(documentId)
         
-        // Инкрементируем просмотры через кастомный эндпоинт
-        try {
-          await articlesAPI.incrementViews(id)
-        } catch (error) {
-          console.warn('Views increment endpoint not available')
+        if (response.data && response.data.data) {
+          this.currentArticle = response.data.data
+        } else {
+          this.currentArticle = response.data
         }
         
-        return response.data.data
+        // Пытаемся увеличить просмотры
+        try {
+          await articlesAPI.incrementViews(documentId)
+        } catch (viewsError) {
+          console.warn('Could not increment views:', viewsError.message)
+          // Игнорируем ошибку увеличения просмотров
+        }
+        
+        return this.currentArticle
       } catch (error) {
+        console.error('Fetch article error:', error)
         this.error = this.getErrorMessage(error)
         throw error
       } finally {
@@ -139,16 +161,23 @@ export const useArticlesStore = defineStore('articles', {
 
     async createArticle(articleData) {
       this.isLoading = true
+      this.error = null
       try {
         const response = await articlesAPI.createArticle(articleData)
         
+        const newArticle = response.data?.data || response.data
+        
+        // Добавляем в начало списка
+        this.articles.unshift(newArticle)
+        
         // Показываем уведомление
         if (window.showToast) {
-          window.showToast('success', 'Статья создана', 'Статья успешно создана и опубликована')
+          window.showToast('success', 'Статья создана', 'Статья успешно создана')
         }
         
-        return response.data.data
+        return newArticle
       } catch (error) {
+        console.error('Create article error:', error)
         this.error = this.getErrorMessage(error)
         
         if (window.showToast) {
@@ -161,26 +190,34 @@ export const useArticlesStore = defineStore('articles', {
       }
     },
 
-    async updateArticle(id, articleData) {
+    async updateArticle(documentId, articleData) {
       this.isLoading = true
+      this.error = null
       try {
-        const response = await articlesAPI.updateArticle(id, articleData)
+        const response = await articlesAPI.updateArticle(documentId, articleData)
+        
+        const updatedArticle = response.data?.data || response.data
         
         // Обновляем в локальном хранилище
-        const index = this.articles.findIndex(article => article.id === id)
+        const index = this.articles.findIndex(article => 
+          article.documentId === documentId || article.attributes?.documentId === documentId
+        )
         if (index !== -1) {
-          this.articles[index] = response.data.data
+          this.articles[index] = updatedArticle
         }
-        if (this.currentArticle?.id === id) {
-          this.currentArticle = response.data.data
+        
+        if (this.currentArticle && 
+            (this.currentArticle.documentId === documentId || this.currentArticle.attributes?.documentId === documentId)) {
+          this.currentArticle = updatedArticle
         }
         
         if (window.showToast) {
           window.showToast('success', 'Сохранено', 'Изменения успешно сохранены')
         }
         
-        return response.data.data
+        return updatedArticle
       } catch (error) {
+        console.error('Update article error:', error)
         this.error = this.getErrorMessage(error)
         
         if (window.showToast) {
@@ -193,13 +230,18 @@ export const useArticlesStore = defineStore('articles', {
       }
     },
 
-    async deleteArticle(id) {
+    async deleteArticle(documentId) {
+      this.isLoading = true
+      this.error = null
       try {
-        await articlesAPI.deleteArticle(id)
+        await articlesAPI.deleteArticle(documentId)
         
         // Удаляем из локального хранилища
-        this.articles = this.articles.filter(article => article.id !== id)
-        if (this.currentArticle?.id === id) {
+        this.articles = this.articles.filter(article => 
+          article.documentId !== documentId
+        )
+        
+        if (this.currentArticle && this.currentArticle.documentId === documentId) {
           this.currentArticle = null
         }
         
@@ -208,6 +250,7 @@ export const useArticlesStore = defineStore('articles', {
         }
         
       } catch (error) {
+        console.error('Delete article error:', error)
         this.error = this.getErrorMessage(error)
         
         if (window.showToast) {
@@ -215,17 +258,30 @@ export const useArticlesStore = defineStore('articles', {
         }
         
         throw error
+      } finally {
+        this.isLoading = false
       }
     },
 
-    async publishArticle(id) {
+    async publishArticle(documentId) {
+      this.isLoading = true
+      this.error = null
       try {
-        await articlesAPI.publishArticle(id)
+        await articlesAPI.publishArticle(documentId)
         
         // Обновляем статус в локальном хранилище
-        const index = this.articles.findIndex(article => article.id === id)
+        const index = this.articles.findIndex(article => 
+          article.documentId === documentId || article.attributes?.documentId === documentId
+        )
         if (index !== -1) {
-          this.articles[index].attributes.publishedAt = new Date().toISOString()
+          const now = new Date().toISOString()
+          if (this.articles[index].attributes) {
+            this.articles[index].attributes.publishedAt = now
+            this.articles[index].attributes.isPublished = true
+          } else {
+            this.articles[index].publishedAt = now
+            this.articles[index].isPublished = true
+          }
         }
         
         if (window.showToast) {
@@ -233,6 +289,7 @@ export const useArticlesStore = defineStore('articles', {
         }
         
       } catch (error) {
+        console.error('Publish article error:', error)
         this.error = this.getErrorMessage(error)
         
         if (window.showToast) {
@@ -240,6 +297,38 @@ export const useArticlesStore = defineStore('articles', {
         }
         
         throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async fetchCategories() {
+      try {
+        const response = await categoriesAPI.getCategories()
+        
+        console.log('Categories API response:', response)
+        
+        if (response.data && response.data.data) {
+          this.categories = response.data.data
+        } else if (response.data && Array.isArray(response.data)) {
+          this.categories = response.data
+        } else {
+          this.categories = []
+          console.warn('Unexpected categories response format:', response)
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error)
+        console.error('Error details:', error.response?.data)
+        
+        // Если 404, возможно, коллекция не существует
+        if (error.response?.status === 404) {
+          this.error = 'Коллекция категорий не найдена в Strapi'
+          console.warn('Categories collection might not exist in Strapi')
+        } else {
+          this.error = 'Ошибка загрузки категорий'
+        }
+        
+        this.categories = []
       }
     },
 
@@ -247,7 +336,6 @@ export const useArticlesStore = defineStore('articles', {
       const filters = {}
       
       if (this.filters.category) {
-        // Новый синтаксис Strapi 5+
         filters['filters[category][slug][$eq]'] = this.filters.category
       }
       
@@ -256,17 +344,15 @@ export const useArticlesStore = defineStore('articles', {
       }
       
       if (this.filters.search) {
-        filters['filters[title][$containsi]'] = this.filters.search
+        // Ищем в заголовке и содержании
+        filters['filters[$or][0][title][$containsi]'] = this.filters.search
+        filters['filters[$or][1][content][$containsi]'] = this.filters.search
+        filters['filters[$or][2][excerpt][$containsi]'] = this.filters.search
       }
       
       if (this.filters.tag) {
         filters['filters[tags][$containsi]'] = this.filters.tag
       }
-      
-      // Добавляем populate параметры в новом формате
-      filters['populate[0]'] = 'category'
-      filters['populate[1]'] = 'author'
-      filters['populate[2]'] = 'coverImage'
       
       return filters
     },
@@ -299,23 +385,31 @@ export const useArticlesStore = defineStore('articles', {
     },
 
     getErrorMessage(error) {
+      if (!error) return 'Неизвестная ошибка'
+      
       if (error.response) {
-        switch (error.response.status) {
+        const status = error.response.status
+        const data = error.response.data
+        
+        switch (status) {
           case 400:
-            return 'Некорректный запрос'
+            return data?.error?.message || data?.message || 'Некорректный запрос'
           case 401:
             return 'Требуется авторизация'
           case 403:
             return 'Доступ запрещен'
           case 404:
-            return 'Статья не найдена'
+            return 'Ресурс не найден'
+          case 422:
+            return data?.error?.message || data?.message || 'Ошибка валидации данных'
           case 500:
-            return 'Ошибка сервера'
+            return 'Ошибка сервера. Попробуйте позже.'
           default:
-            return error.response.data?.error?.message || 'Ошибка загрузки данных'
+            return data?.error?.message || data?.message || `Ошибка ${status}`
         }
       }
-      return error.message || 'Неизвестная ошибка'
+      
+      return error.message || 'Неизвестная ошибка сети'
     },
 
     clearError() {

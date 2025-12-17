@@ -27,6 +27,7 @@ strapi.interceptors.response.use(
     if (error.response?.status === 401) {
       // Очищаем токен при 401 ошибке
       localStorage.removeItem('jwt')
+      localStorage.removeItem('user')
       
       // Перенаправляем на страницу входа
       if (window.location.pathname !== '/login') {
@@ -46,7 +47,7 @@ export const authAPI = {
   register: (username, email, password) =>
     strapi.post('/api/auth/local/register', { username, email, password }),
   
-  me: () => strapi.get('/api/users/me?populate=role'),
+  me: () => strapi.get('/api/users/me?populate=*'),
   
   forgotPassword: (email) =>
     strapi.post('/api/auth/forgot-password', { email }),
@@ -58,53 +59,89 @@ export const authAPI = {
 // API методы для статей
 export const articlesAPI = {
   // Стандартные CRUD операции
-  getArticles: (params) => strapi.get('/api/articles', { params }),
+  getArticles: (params = {}) => {
+    const defaultParams = {
+      populate: '*',
+      sort: 'publishedAt:desc',
+      'pagination[pageSize]': 12
+    }
+    
+    return strapi.get('/api/articles', { params: { ...defaultParams, ...params } })
+  },
   
-  getArticle: (id) =>
-    strapi.get(`/api/articles/${id}?populate=coverImage,category,author,tags`),
+  getArticle: (idOrDocumentId) =>
+    strapi.get(`/api/articles/${idOrDocumentId}?populate=*`),
   
   createArticle: (data) => strapi.post('/api/articles', { data }),
   
-  updateArticle: (id, data) => strapi.put(`/api/articles/${id}`, { data }),
+  updateArticle: (idOrDocumentId, data) => strapi.put(`/api/articles/${idOrDocumentId}`, { data }),
   
-  deleteArticle: (id) => strapi.delete(`/api/articles/${id}`),
+  deleteArticle: (idOrDocumentId) => strapi.delete(`/api/articles/${idOrDocumentId}`),
   
-  // Кастомные эндпоинты (из ТЗ)
-getFeatured: () => strapi.get('/api/articles', {
-  params: {
-    'filters[isFeatured][$eq]': 'true',
-    'populate[0]': 'coverImage',
-    'populate[1]': 'category',
-    'populate[2]': 'author',
-    'populate[3]': 'tags',
-    'sort': 'publishedAt:desc',
-    'pagination[pageSize]': 5
-  }
-}),
+  // Кастомные методы фильтрации
+  getFeatured: () =>
+    strapi.get('/api/articles', {
+      params: {
+        'filters[isFeatured][$eq]': true,
+        populate: '*',
+        sort: 'publishedAt:desc',
+        'pagination[pageSize]': 5
+      }
+    }),
   
-  publishArticle: (id) => strapi.post(`/api/articles/${id}/publish`),
+  publishArticle: (idOrDocumentId) => 
+    strapi.put(`/api/articles/${idOrDocumentId}`, { 
+      data: { 
+        publishedAt: new Date().toISOString()
+      }
+    }),
   
-  incrementViews: (id) => strapi.post(`/api/articles/${id}/views`),
-  
-  // Дополнительные методы
-  getByCategory: (categorySlug) =>
-    strapi.get(`/api/articles?filters[category][slug][$eq]=${categorySlug}&populate=*`),
-  
-  searchArticles: (query) =>
-    strapi.get(`/api/articles?filters[title][$containsi]=${query}&populate=*`),
+  incrementViews: async (idOrDocumentId) => {
+    try {
+      console.log('Incrementing views for article:', idOrDocumentId)
+      
+      // 1. Сначала получаем статью
+      const getResponse = await strapi.get(`/api/articles/${idOrDocumentId}`)
+      console.log('Article response:', getResponse.data)
+      
+      const article = getResponse.data?.data || getResponse.data
+      console.log('Current article:', article)
+      
+      const currentViews = article.views || 0
+      console.log('Current views:', currentViews, 'New views:', currentViews + 1)
+      
+      // 2. Отправляем PUT запрос с правильной структурой
+      const updateResponse = await strapi.put(`/api/articles/${idOrDocumentId}`, {
+        data: {
+          views: currentViews + 1
+        }
+      })
+      
+      console.log('Update successful:', updateResponse.data)
+      return updateResponse
+      
+    } catch (error) {
+      console.error('Views increment failed:', error.message)
+      console.error('Error response:', error.response?.data)
+      // Возвращаем фейковый ответ, чтобы не ломать цепочку
+      return { data: {} }
+    }
+  },
 }
 
 // API методы для категорий
 export const categoriesAPI = {
-  getCategories: () => strapi.get('/api/categories?populate=*'),
+  getCategories: () => 
+    strapi.get('/api/categories?populate=*'),
   
-  getCategory: (id) => strapi.get(`/api/categories/${id}?populate=*`),
+  getCategory: (idOrDocumentId) => 
+    strapi.get(`/api/categories/${idOrDocumentId}?populate=*`),
   
   createCategory: (data) => strapi.post('/api/categories', { data }),
   
-  updateCategory: (id, data) => strapi.put(`/api/categories/${id}`, { data }),
+  updateCategory: (idOrDocumentId, data) => strapi.put(`/api/categories/${idOrDocumentId}`, { data }),
   
-  deleteCategory: (id) => strapi.delete(`/api/categories/${id}`),
+  deleteCategory: (idOrDocumentId) => strapi.delete(`/api/categories/${idOrDocumentId}`),
 }
 
 // API методы для загрузки файлов
@@ -134,13 +171,13 @@ export const uploadAPI = {
 
 // API методы для пользователей
 export const usersAPI = {
-  getUsers: () => strapi.get('/api/users?populate=role'),
+  getUsers: () => strapi.get('/api/users?populate=*'),
   
-  getUser: (id) => strapi.get(`/api/users/${id}?populate=role`),
+  getUser: (idOrDocumentId) => strapi.get(`/api/users/${idOrDocumentId}?populate=*`),
   
-  updateUser: (id, data) => strapi.put(`/api/users/${id}`, { data }),
+  updateUser: (idOrDocumentId, data) => strapi.put(`/api/users/${idOrDocumentId}`, { data }),
   
-  deleteUser: (id) => strapi.delete(`/api/users/${id}`),
+  deleteUser: (idOrDocumentId) => strapi.delete(`/api/users/${idOrDocumentId}`),
 }
 
 export default strapi
