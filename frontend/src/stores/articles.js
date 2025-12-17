@@ -55,7 +55,7 @@ export const useArticlesStore = defineStore('articles', {
         this.pagination = response.data.meta.pagination
         
         // Проверяем наличие кастомного эндпоинта /featured
-        if (!this.featuredArticles.length) {
+        if (!this.featuredArticles || !this.featuredArticles.length) {
           this.fetchFeaturedArticles()
         }
         
@@ -69,19 +69,39 @@ export const useArticlesStore = defineStore('articles', {
     },
 
     async fetchFeaturedArticles() {
-      try {
-        // Пробуем получить избранные статьи через кастомный эндпоинт
-        const response = await articlesAPI.getFeatured()
-        this.featuredArticles = response.data.data
+  try {
+    // Пробуем получить избранные статьи через кастомный эндпоинт
+    const response = await articlesAPI.getFeatured()
+    
+    // Добавляем проверку на 404 и другие ошибки
+    if (!response.data || response.status === 404) {
+      throw new Error('Featured endpoint not found')
+    }
+    
+    this.featuredArticles = response.data.data || []
       } catch (error) {
         // Если кастомный эндпоинт не реализован, фильтруем локально
-        console.warn('Featured endpoint not available, filtering locally')
-        const allArticles = await articlesAPI.getArticles({
-          'pagination[pageSize]': 100
-        })
-        this.featuredArticles = allArticles.data.data
-          .filter(article => article.attributes.isFeatured)
-          .slice(0, 5)
+        console.warn('Featured endpoint not available, filtering locally:', error.message)
+        
+        try {
+          // ИСПРАВЬ ЭТОТ ЗАПРОС:
+          // Убираем populate=* из запроса, он может вызывать ошибки
+          const allArticles = await articlesAPI.getArticles({
+            'pagination[pageSize]': 10, // Уменьшаем количество
+            'filters[isFeatured][$eq]': true // Сразу фильтруем на сервере
+          })
+          
+          console.log('Filtered featured articles:', allArticles)
+          
+          // Безопасная обработка
+          this.featuredArticles = (allArticles.data?.data || [])
+            .filter(article => article?.attributes?.isFeatured === true)
+            .slice(0, 5)
+            
+        } catch (innerError) {
+          console.error('Error fetching featured articles:', innerError)
+          this.featuredArticles = [] // Устанавливаем пустой массив при любой ошибке
+        }
       }
     },
 
@@ -227,6 +247,7 @@ export const useArticlesStore = defineStore('articles', {
       const filters = {}
       
       if (this.filters.category) {
+        // Новый синтаксис Strapi 5+
         filters['filters[category][slug][$eq]'] = this.filters.category
       }
       
@@ -241,6 +262,11 @@ export const useArticlesStore = defineStore('articles', {
       if (this.filters.tag) {
         filters['filters[tags][$containsi]'] = this.filters.tag
       }
+      
+      // Добавляем populate параметры в новом формате
+      filters['populate[0]'] = 'category'
+      filters['populate[1]'] = 'author'
+      filters['populate[2]'] = 'coverImage'
       
       return filters
     },

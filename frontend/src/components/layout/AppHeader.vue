@@ -22,7 +22,7 @@
           </router-link>
           
           <!-- Категории dropdown -->
-          <div class="nav-dropdown" v-if="categories.length">
+          <div class="nav-dropdown" v-if="categories?.length">
             <button class="nav-link">
               📂 Категории
               <span class="dropdown-arrow">▼</span>
@@ -31,14 +31,14 @@
               <router-link 
                 v-for="category in categories.slice(0, 8)" 
                 :key="category.id"
-                :to="`/?category=${category.attributes.slug}`"
+                :to="`/?category=${category?.attributes?.slug || category.id}`"
                 class="dropdown-item"
                 @click="closeMobileMenu"
               >
-                {{ category.attributes.name }}
+                {{ category?.attributes?.name || 'Категория' }}
               </router-link>
               <router-link 
-                v-if="categories.length > 8"
+                v-if="categories?.length > 8"
                 to="/categories"
                 class="dropdown-item all-categories"
                 @click="closeMobileMenu"
@@ -166,7 +166,7 @@ const isMobileMenuOpen = ref(false)
 const isUserMenuOpen = ref(false)
 
 // Категории для навигации
-const categories = computed(() => articlesStore.categories)
+const categories = computed(() => articlesStore.categories || [])
 
 // Получение инициалов пользователя
 const getUserInitials = computed(() => {
@@ -237,7 +237,7 @@ const vClickOutside = {
 
 // Загрузка категорий при монтировании
 onMounted(async () => {
-  if (categories.value.length === 0) {
+  if (!categories.value || categories.value.length === 0) {
     await articlesStore.fetchCategories()
   }
   

@@ -24,9 +24,9 @@
           <option 
             v-for="category in categories" 
             :key="category.id"
-            :value="category.attributes.slug"
+            :value="category?.attributes?.slug || category.id"
           >
-            {{ category.attributes.name }}
+            {{ category?.attributes?.name || 'Категория' }}
           </option>
         </select>
       </div>
@@ -60,7 +60,7 @@
       </div>
       
       <!-- Теги (если есть) -->
-      <div v-if="availableTags.length > 0" class="filter-group">
+      <div v-if="availableTags?.length > 0" class="filter-group">
         <label>Теги</label>
         <select 
           v-model="localFilters.tag" 
@@ -110,17 +110,17 @@ const localFilters = ref({
   search: ''
 })
 
-const categories = computed(() => articlesStore.categories)
+const categories = computed(() => articlesStore.categories || [])
 
 // Извлечение уникальных тегов из всех статей
 const availableTags = computed(() => {
   const tags = new Set()
-  articlesStore.articles.forEach(article => {
-    if (article.attributes.tags) {
+  articlesStore.articles?.forEach(article => {
+    if (article?.attributes?.tags) {
       article.attributes.tags.forEach(tag => tags.add(tag))
     }
   })
-  return Array.from(tags).slice(0, 10) // Показываем только 10 тегов
+  return Array.from(tags).slice(0, 10)
 })
 
 // Проверка активных фильтров
@@ -141,7 +141,7 @@ const activeFiltersList = computed(() => {
     if (category) {
       filters.push({
         key: 'category',
-        label: `Категория: ${category.attributes.name}`
+        label: `Категория: ${category?.attributes?.name || 'Категория'}`
       })
     }
   }
@@ -241,7 +241,7 @@ watch(() => props.searchQuery, (newSearch) => {
 
 onMounted(() => {
   // Загружаем категории если их нет
-  if (categories.value.length === 0) {
+  if (!categories.value || categories.value.length === 0) {
     articlesStore.fetchCategories()
   }
   

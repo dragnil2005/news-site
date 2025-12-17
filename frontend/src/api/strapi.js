@@ -70,7 +70,7 @@ export const articlesAPI = {
   deleteArticle: (id) => strapi.delete(`/api/articles/${id}`),
   
   // Кастомные эндпоинты (из ТЗ)
-  getFeatured: () => strapi.get('/api/articles/featured?populate=*'),
+  getFeatured: () => strapi.get('/api/articles?filters[isFeatured][$eq]=true&populate=*&sort=publishedAt:desc&pagination[pageSize]=5'),
   
   publishArticle: (id) => strapi.post(`/api/articles/${id}/publish`),
   

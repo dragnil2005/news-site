@@ -48,11 +48,11 @@
           <h4>Популярные категории</h4>
           <ul class="footer-links">
             <li v-for="category in popularCategories" :key="category.id">
-              <router-link :to="`/?category=${category.attributes.slug}`">
-                {{ category.attributes.name }}
+              <router-link :to="`/?category=${category?.attributes?.slug || category.id}`">
+                {{ category?.attributes?.name || 'Категория' }}
               </router-link>
             </li>
-            <li v-if="categories.length > 5">
+            <li v-if="articlesStore.categories && articlesStore.categories.length > 5">
               <router-link to="/categories" v-if="authStore.isEditor">
                 Все категории →
               </router-link>
@@ -115,16 +115,16 @@ const articlesStore = useArticlesStore()
 
 // Статистика
 const totalArticles = computed(() => articlesStore.pagination.total || 0)
-const totalCategories = computed(() => articlesStore.categories.length)
+const totalCategories = computed(() => articlesStore.categories?.length || 0)
 
 // Популярные категории (первые 5)
 const popularCategories = computed(() => {
-  return articlesStore.categories.slice(0, 5)
+  return articlesStore.categories.slice(0, 5) || []
 })
 
 // Получаем категории при монтировании
 onMounted(async () => {
-  if (articlesStore.categories.length === 0) {
+  if (!articlesStore.categories || articlesStore.categories.length === 0) {
     await articlesStore.fetchCategories()
   }
 })
