@@ -5,38 +5,28 @@
   "description": "A Strapi application",
   "scripts": {
     "build": "strapi build",
-    "console": "strapi console",
-    "deploy": "strapi deploy",
     "dev": "strapi develop",
     "develop": "strapi develop",
     "start": "strapi start",
-    "strapi": "strapi",
-    "upgrade": "npx @strapi/upgrade latest",
-    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+    "strapi": "strapi"
   },
   "dependencies": {
-    "@strapi/plugin-cloud": "5.31.3",
-    "@strapi/plugin-users-permissions": "5.31.3",
-    "@strapi/strapi": "5.31.3",
-    "better-sqlite3": "^12.5.0",
-    "pg": "8.8.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "react-router-dom": "^6.0.0",
-    "styled-components": "^6.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "typescript": "^5"
+    "@strapi/plugin-content-manager": "4.25.24",
+    "@strapi/plugin-content-type-builder": "4.25.24",
+    "@strapi/plugin-email": "4.25.24",
+    "@strapi/plugin-i18n": "4.25.24",
+    "@strapi/plugin-upload": "4.25.24",
+    "@strapi/plugin-users-permissions": "4.25.24",
+    "@strapi/provider-upload-local": "4.25.24",
+    "@strapi/strapi": "4.25.24",
+    "better-sqlite3": "8.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^5.3.4",
+    "styled-components": "^5.3.11"
   },
   "engines": {
-    "node": ">=20.0.0 <=24.x.x",
+    "node": ">=16.0.0 <=20.x.x",
     "npm": ">=6.0.0"
-  },
-  "strapi": {
-    "uuid": "cf305800-b25c-42db-8765-c71138ce6855",
-    "installId": "b1f217a731851c199d0797eaffdd6eadf841536cf8a323e3881e5aa3b64dfa95"
   }
 }
